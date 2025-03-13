@@ -1,0 +1,12 @@
+name: Trigger API
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # 每15分钟运行一次
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call API Endpoint
+        run: curl -X GET https://bot.uykb.eu.org/api
