@@ -9,4 +9,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Call API Endpoint
-        run: curl -X GET https://bot.uykb.eu.org/api
+        run: curl -X GET https://signal-bot-git.vercel.app/api
