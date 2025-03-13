@@ -19,7 +19,7 @@ async function scanMarket() {
     const batch = symbolsData.slice(i, i + batchSize);
     const promises = batch.map(async (symbolData) => {
       // 步骤二和三：获取K线数据并分析
-      const klines = await getKlines(symbolData.symbol, '1H', 20);
+      const klines = await getKlines(symbolData.symbol, '1H', 50);
       if (klines.length === 0) return null;
       
       // 分析是否满足信号条件
