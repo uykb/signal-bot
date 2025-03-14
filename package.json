@@ -1,7 +1,7 @@
 {
-  "name": "okx-signal-bot",
+  "name": "signal-bot",
   "version": "1.0.0",
-  "description": "OKX合约交易信号提醒机器人",
+  "description": "Bybit交易信号机器人",
   "main": "api/index.js",
   "scripts": {
     "dev": "vercel dev",
@@ -9,11 +9,8 @@
   },
   "dependencies": {
     "axios": "^1.6.0",
-    "crypto": "^1.0.1",
-    "dotenv": "^16.3.1"
-  },
-  "devDependencies": {
-    "vercel": "^32.5.0"
+    "dotenv": "^16.3.1",
+    "ws": "^8.14.2"
   },
   "engines": {
     "node": ">=14.0.0"
