@@ -7,27 +7,25 @@ require('dotenv').config();
  * 主要扫描函数
  */
 async function scanMarket() {
-  console.log('开始扫描OKX合约市场...');
+  console.log('开始扫描Bybit合约市场...');
   
-  // 步骤一：获取所有合约交易对
   const symbolsData = await getAllSymbols();
   const signals = [];
   
   // 限制并发请求数量
-  const batchSize = 5; // OKX API限制更严格，减小批处理大小
+  const batchSize = 5; // Bybit API限制
   for (let i = 0; i < symbolsData.length; i += batchSize) {
     const batch = symbolsData.slice(i, i + batchSize);
     const promises = batch.map(async (symbolData) => {
-      // 步骤二和三：获取K线数据并分析
-      const klines = await getKlines(symbolData.symbol, '1H', 20);
+      // 获取K线数据并分析
+      const klines = await getKlines(symbolData.symbol, '60', 20); // 使用60分钟K线
       if (klines.length === 0) return null;
       
-      // 分析是否满足信号条件
       const signal = analyzeSymbol(klines);
       if (signal) {
-        // 添加合约类型信息
         signal.details.type = symbolData.type;
         signal.details.underlying = symbolData.underlying;
+        signal.details.quoteCoin = symbolData.quoteCoin;
         console.log(`发现信号: ${symbolData.symbol} - ${signal.type}`);
         return signal;
       }
@@ -38,7 +36,7 @@ async function scanMarket() {
     signals.push(...batchResults.filter(signal => signal !== null));
     
     // 添加延迟以避免API限制
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
   
   // 步骤四：推送消息
