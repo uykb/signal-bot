@@ -18,62 +18,120 @@ async function scanMarket() {
   for (let i = 0; i < symbolsData.length; i += batchSize) {
     const batch = symbolsData.slice(i, i + batchSize);
     const promises = batch.map(async (symbolData) => {
-      // 步骤二和三：获取K线数据并分析
-      const klines = await getKlines(symbolData.symbol, '1H', 50);
-      if (klines.length === 0) return null;
-      
-      // 分析是否满足信号条件
-      const signal = analyzeSymbol(klines);
-      if (signal) {
-        // 添加合约类型信息
-        signal.details.type = symbolData.type;
-        signal.details.underlying = symbolData.underlying;
-        console.log(`发现信号: ${symbolData.symbol} - ${signal.type}`);
-        return signal;
+      try {
+        // 步骤二和三：获取K线数据并分析
+        const klines = await getKlines(symbolData.symbol, '1H', 20);
+        if (klines.length === 0) return null;
+        
+        // 分析是否满足信号条件
+        const signal = analyzeSymbol(klines);
+        if (signal) {
+          // 添加合约类型信息
+          signal.details.type = symbolData.type;
+          signal.details.underlying = symbolData.underlying;
+          console.log(`发现信号: ${symbolData.symbol} - ${signal.type}`);
+          return signal;
+        }
+        return null;
+      } catch (error) {
+        console.error(`处理 ${symbolData.symbol} 时发生错误:`, error.message);
+        return null;
       }
-      return null;
     });
     
-    const batchResults = await Promise.all(promises);
-    signals.push(...batchResults.filter(signal => signal !== null));
+    try {
+      const batchResults = await Promise.all(promises);
+      signals.push(...batchResults.filter(signal => signal !== null));
+    } catch (error) {
+      console.error('批处理请求失败:', error.message);
+    }
     
     // 添加延迟以避免API限制
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   
-  // 步骤四：推送消息
-  for (const signal of signals) {
-    await sendToFeishu(signal);
+  // 步骤四：如果有信号，一次性发送所有信号
+  if (signals.length > 0) {
+    try {
+      await sendToFeishu(signals);
+    } catch (error) {
+      console.error('发送信号到飞书失败:', error.message);
+    }
   }
   
   console.log(`扫描完成，发现 ${signals.length} 个信号`);
   return { signals };
 }
 
-// 用于Vercel Serverless Function的处理函数
-module.exports = async (req, res) => {
+/**
+ * 处理健康检查请求
+ */
+async function handleHealthCheck(res) {
+  return res.status(200).json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    message: '服务正常运行'
+  });
+}
+
+/**
+ * 处理手动扫描请求
+ */
+async function handleManualScan(res) {
   try {
-    // 如果是GET请求，执行一次扫描
-    if (req.method === 'GET') {
-      const result = await scanMarket();
-      return res.status(200).json(result);
+    const result = await scanMarket();
+    return res.status(200).json({
+      status: 'success',
+      ...result
+    });
+  } catch (error) {
+    console.error('扫描过程发生错误:', error);
+    return res.status(500).json({
+      status: 'error',
+      error: '扫描过程发生错误',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Vercel Serverless Function 处理函数
+ */
+module.exports = async (req, res) => {
+  // 设置CORS头
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // 处理OPTIONS请求
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  try {
+    // 健康检查端点
+    if (req.method === 'GET' && req.query.health === 'check') {
+      return handleHealthCheck(res);
     }
     
-    // 如果是POST请求，可以添加手动触发或其他功能
-    if (req.method === 'POST') {
-      const { action } = req.body || {};
-      
-      if (action === 'scan') {
-        const result = await scanMarket();
-        return res.status(200).json(result);
-      }
-      
-      return res.status(400).json({ error: '无效的操作' });
+    // 如果是GET请求或带有scan操作的POST请求，执行扫描
+    if (req.method === 'GET' || (req.method === 'POST' && req.body?.action === 'scan')) {
+      return handleManualScan(res);
     }
     
-    return res.status(405).json({ error: '方法不允许' });
+    // 其他无效请求
+    return res.status(400).json({ 
+      status: 'error',
+      error: '无效的请求',
+      message: '不支持的HTTP方法或操作'
+    });
+    
   } catch (error) {
     console.error('服务器错误:', error);
-    return res.status(500).json({ error: '服务器错误', message: error.message });
+    return res.status(500).json({ 
+      status: 'error',
+      error: '服务器错误',
+      message: error.message
+    });
   }
 };
