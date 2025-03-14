@@ -2,8 +2,18 @@ const axios = require('axios');
 require('dotenv').config();
 
 /**
- * 发送消息到飞书
+ * 转换UTC时间到北京时间
+ * @param {Date} date UTC时间
+ * @returns {string} 格式化的北京时间字符串
  */
+function formatBeijingTime(date) {
+  const beijingTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  return beijingTime.toLocaleString('zh-CN', { 
+    timeZone: 'Asia/Shanghai',
+    hour12: false 
+  });
+}
+
 async function sendToFeishu(signal) {
   const webhookUrl = process.env.FEISHU_WEBHOOK_URL;
   
@@ -13,7 +23,10 @@ async function sendToFeishu(signal) {
   }
   
   try {
-    // 构建飞书消息卡片
+    // 转换信号时间为北京时间
+    const signalTime = new Date(signal.time);
+    const beijingTime = formatBeijingTime(signalTime);
+
     const message = {
       msg_type: "interactive",
       card: {
@@ -33,7 +46,7 @@ async function sendToFeishu(signal) {
             elements: [
               {
                 tag: "plain_text",
-                content: `信号时间: ${signal.time}`
+                content: `信号时间: ${beijingTime} (北京时间)`
               }
             ]
           }
