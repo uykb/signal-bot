@@ -3,86 +3,77 @@ const { analyzeSymbol } = require('./utils/analysis');
 const { sendToFeishu } = require('./utils/notification');
 require('dotenv').config();
 
+/**
+ * 主要扫描函数
+ */
 async function scanMarket() {
-    console.log('开始扫描Bybit合约市场...');
+  console.log('开始扫描OKX合约市场...');
+  
+  // 步骤一：获取所有合约交易对
+  const symbolsData = await getAllSymbols();
+  const signals = [];
+  
+  // 限制并发请求数量
+  const batchSize = 5; // OKX API限制更严格，减小批处理大小
+  for (let i = 0; i < symbolsData.length; i += batchSize) {
+    const batch = symbolsData.slice(i, i + batchSize);
+    const promises = batch.map(async (symbolData) => {
+      // 步骤二和三：获取K线数据并分析
+      const klines = await getKlines(symbolData.symbol, '1H', 20);
+      if (klines.length === 0) return null;
+      
+      // 分析是否满足信号条件
+      const signal = analyzeSymbol(klines);
+      if (signal) {
+        // 添加合约类型信息
+        signal.details.type = symbolData.type;
+        signal.details.underlying = symbolData.underlying;
+        console.log(`发现信号: ${symbolData.symbol} - ${signal.type}`);
+        return signal;
+      }
+      return null;
+    });
     
-    try {
-        const activeSymbols = await getAllSymbols();
-        const signals = [];
-        const batchSize = 3;
-        
-        for (let i = 0; i < activeSymbols.length; i += batchSize) {
-            const batch = activeSymbols.slice(i, i + batchSize);
-            const promises = batch.map(async (symbolData) => {
-                try {
-                    const klines = await getKlines(symbolData.symbol, '60', 20);
-                    if (klines.length === 0) return null;
-                    
-                    const signal = analyzeSymbol(klines);
-                    if (signal) {
-                        signal.details = {
-                            ...signal.details,
-                            type: symbolData.type,
-                            underlying: symbolData.underlying,
-                            quoteCoin: symbolData.quoteCoin
-                        };
-                        console.log(`发现信号: ${symbolData.symbol} - ${signal.type}`);
-                        return signal;
-                    }
-                } catch (error) {
-                    console.error(`分析 ${symbolData.symbol} 时出错:`, error.message);
-                }
-                return null;
-            });
-            
-            try {
-                const batchResults = await Promise.all(promises);
-                signals.push(...batchResults.filter(signal => signal !== null));
-            } catch (error) {
-                console.error('处理批次数据时出错:', error);
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 1500));
-        }
-        
-        if (signals.length > 0) {
-            for (const signal of signals) {
-                try {
-                    await sendToFeishu(signal);
-                } catch (error) {
-                    console.error('发送飞书通知失败:', error);
-                }
-            }
-        }
-        
-        return { 
-            signals,
-            timestamp: new Date().toISOString(),
-            totalSymbols: activeSymbols.length
-        };
-    } catch (error) {
-        console.error('扫描市场时出错:', error);
-        throw error;
-    }
+    const batchResults = await Promise.all(promises);
+    signals.push(...batchResults.filter(signal => signal !== null));
+    
+    // 添加延迟以避免API限制
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  
+  // 步骤四：推送消息
+  for (const signal of signals) {
+    await sendToFeishu(signal);
+  }
+  
+  console.log(`扫描完成，发现 ${signals.length} 个信号`);
+  return { signals };
 }
 
+// 用于Vercel Serverless Function的处理函数
 module.exports = async (req, res) => {
-    try {
-        if (req.method === 'GET') {
-            const result = await scanMarket();
-            return res.status(200).json(result);
-        }
-        
-        return res.status(405).json({
-            error: '方法不允许',
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('服务器错误:', error);
-        return res.status(500).json({
-            error: '服务器错误',
-            message: error.message,
-            timestamp: new Date().toISOString()
-        });
+  try {
+    // 如果是GET请求，执行一次扫描
+    if (req.method === 'GET') {
+      const result = await scanMarket();
+      return res.status(200).json(result);
     }
+    
+    // 如果是POST请求，可以添加手动触发或其他功能
+    if (req.method === 'POST') {
+      const { action } = req.body || {};
+      
+      if (action === 'scan') {
+        const result = await scanMarket();
+        return res.status(200).json(result);
+      }
+      
+      return res.status(400).json({ error: '无效的操作' });
+    }
+    
+    return res.status(405).json({ error: '方法不允许' });
+  } catch (error) {
+    console.error('服务器错误:', error);
+    return res.status(500).json({ error: '服务器错误', message: error.message });
+  }
 };
