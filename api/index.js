@@ -20,7 +20,7 @@ async function scanMarket() {
     const promises = batch.map(async (symbolData) => {
       try {
         // 步骤二和三：获取K线数据并分析
-        const klines = await getKlines(symbolData.symbol, '15m', 20);
+        const klines = await getKlines(symbolData.symbol, '1H', 20);
         if (klines.length === 0) return null;
         
         // 分析是否满足信号条件
