@@ -14,16 +14,16 @@ async function sendToFeishu(signal) {
   
   try {
     // 构建飞书消息卡片
-    const message = {
-      msg_type: "interactive",
-      card: {
-        elements: [
-          {
-            tag: "div",
-            text: {
-              content: `**交易对**: ${signal.details.symbol}\n**价格**: ${signal.details.price}\n**成交量比率**: ${signal.details.volumeRatio}\n**合约类型**: ${signal.details.type}\n**标的资产**: ${signal.details.underlying}`,
-              tag: "lark_md"
-            }
+const message = {
+  msg_type: "interactive",
+  card: {
+    elements: [
+      {
+        tag: "div",
+        text: {
+          content: `**交易对**: ${signal.details.symbol}\n**价格**: ${signal.details.price}\n**成交量比率**: ${signal.details.volumeRatio}\n**合约类型**: ${signal.details.type}\n**标的币种**: ${signal.details.underlying}\n**计价币种**: ${signal.details.quoteCoin}`,
+          tag: "lark_md"
+        }
           },
           {
             tag: "hr"
