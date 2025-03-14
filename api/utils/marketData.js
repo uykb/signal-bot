@@ -1,7 +1,40 @@
 const axios = require('axios');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const BASE_URL = 'https://api.bybit.com';
+
+// 添加生成签名的函数
+function generateSignature(parameters, timestamp, apiSecret) {
+    const orderedParams = Object.keys(parameters)
+        .sort()
+        .reduce((obj, key) => {
+            obj[key] = parameters[key];
+            return obj;
+        }, {});
+
+    const queryString = Object.entries(orderedParams)
+        .map(([key, value]) => `${key}=${value}`)
+        .join('&');
+
+    return crypto
+        .createHmac('sha256', apiSecret)
+        .update(timestamp + process.env.BYBIT_API_KEY + queryString)
+        .digest('hex');
+}
+
+// 添加请求头生成函数
+function getHeaders(parameters = {}) {
+    const timestamp = Date.now().toString();
+    const signature = generateSignature(parameters, timestamp, process.env.BYBIT_API_SECRET);
+
+    return {
+        'X-BAPI-API-KEY': process.env.BYBIT_API_KEY,
+        'X-BAPI-SIGN': signature,
+        'X-BAPI-TIMESTAMP': timestamp,
+        'X-BAPI-RECV-WINDOW': '5000'
+    };
+}
 
 async function getAllSymbols() {
     try {
@@ -9,10 +42,12 @@ async function getAllSymbols() {
         let allSymbols = [];
 
         for (const category of categories) {
+            const params = { category };
+            const headers = getHeaders(params);
+            
             const response = await axios.get(`${BASE_URL}/v5/market/instruments-info`, {
-                params: {
-                    category: category
-                }
+                params,
+                headers
             });
 
             if (response.data.result && response.data.result.list) {
@@ -37,13 +72,17 @@ async function getAllSymbols() {
 
 async function getKlines(symbol, interval = '60', limit = 20) {
     try {
+        const params = {
+            category: 'linear',
+            symbol,
+            interval,
+            limit
+        };
+        const headers = getHeaders(params);
+
         const response = await axios.get(`${BASE_URL}/v5/market/kline`, {
-            params: {
-                category: 'linear',
-                symbol: symbol,
-                interval: interval,
-                limit: limit
-            }
+            params,
+            headers
         });
 
         if (!response.data.result || !response.data.result.list) {
