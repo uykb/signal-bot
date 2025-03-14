@@ -46,12 +46,12 @@ function analyzeSymbol(klines) {
   const hasVolume = hasSignificantVolume(klines);
   
   if (isPinBarPattern && hasVolume) {
-    // 判断是看涨还是看跌信号
     const isBullish = latestKline.close > latestKline.open;
     
     return {
       type: isBullish ? '看涨信号' : '看跌信号',
-      time: new Date(latestKline.closeTime).toLocaleString(),
+      // 直接传入UTC时间戳，让notification模块处理时区转换
+      time: new Date(latestKline.closeTime),
       details: {
         symbol: latestKline.symbol,
         price: latestKline.close,
