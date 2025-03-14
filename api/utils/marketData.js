@@ -1,40 +1,7 @@
 const axios = require('axios');
-const crypto = require('crypto');
 require('dotenv').config();
 
-const BASE_URL = 'https://api.bybit.com';
-
-// 添加生成签名的函数
-function generateSignature(parameters, timestamp, apiSecret) {
-    const orderedParams = Object.keys(parameters)
-        .sort()
-        .reduce((obj, key) => {
-            obj[key] = parameters[key];
-            return obj;
-        }, {});
-
-    const queryString = Object.entries(orderedParams)
-        .map(([key, value]) => `${key}=${value}`)
-        .join('&');
-
-    return crypto
-        .createHmac('sha256', apiSecret)
-        .update(timestamp + process.env.BYBIT_API_KEY + queryString)
-        .digest('hex');
-}
-
-// 添加请求头生成函数
-function getHeaders(parameters = {}) {
-    const timestamp = Date.now().toString();
-    const signature = generateSignature(parameters, timestamp, process.env.BYBIT_API_SECRET);
-
-    return {
-        'X-BAPI-API-KEY': process.env.BYBIT_API_KEY,
-        'X-BAPI-SIGN': signature,
-        'X-BAPI-TIMESTAMP': timestamp,
-        'X-BAPI-RECV-WINDOW': '5000'
-    };
-}
+const BASE_URL = 'https://api-testnet.bybit.com'; // 使用测试网进行测试
 
 async function getAllSymbols() {
     try {
@@ -42,15 +9,13 @@ async function getAllSymbols() {
         let allSymbols = [];
 
         for (const category of categories) {
-            const params = { category };
-            const headers = getHeaders(params);
-            
             const response = await axios.get(`${BASE_URL}/v5/market/instruments-info`, {
-                params,
-                headers
+                params: {
+                    category: category
+                }
             });
 
-            if (response.data.result && response.data.result.list) {
+            if (response.data.retCode === 0 && response.data.result && response.data.result.list) {
                 const symbols = response.data.result.list
                     .filter(symbol => symbol.status === 'Trading')
                     .map(symbol => ({
@@ -63,6 +28,7 @@ async function getAllSymbols() {
             }
         }
 
+        console.log(`成功获取 ${allSymbols.length} 个交易对`);
         return allSymbols;
     } catch (error) {
         console.error('获取交易对失败:', error.message);
@@ -72,33 +38,28 @@ async function getAllSymbols() {
 
 async function getKlines(symbol, interval = '60', limit = 20) {
     try {
-        const params = {
-            category: 'linear',
-            symbol,
-            interval,
-            limit
-        };
-        const headers = getHeaders(params);
-
         const response = await axios.get(`${BASE_URL}/v5/market/kline`, {
-            params,
-            headers
+            params: {
+                category: 'linear',
+                symbol: symbol,
+                interval: interval,
+                limit: limit
+            }
         });
 
-        if (!response.data.result || !response.data.result.list) {
-            return [];
+        if (response.data.retCode === 0 && response.data.result && response.data.result.list) {
+            return response.data.result.list.map(kline => ({
+                openTime: parseInt(kline[0]),
+                open: parseFloat(kline[1]),
+                high: parseFloat(kline[2]),
+                low: parseFloat(kline[3]),
+                close: parseFloat(kline[4]),
+                volume: parseFloat(kline[5]),
+                closeTime: parseInt(kline[0]) + parseInt(interval) * 60 * 1000,
+                symbol: symbol
+            })).reverse();
         }
-
-        return response.data.result.list.map(kline => ({
-            openTime: parseInt(kline[0]),
-            open: parseFloat(kline[1]),
-            high: parseFloat(kline[2]),
-            low: parseFloat(kline[3]),
-            close: parseFloat(kline[4]),
-            volume: parseFloat(kline[5]),
-            closeTime: parseInt(kline[0]) + parseInt(interval) * 60 * 1000,
-            symbol: symbol
-        })).reverse();
+        return [];
     } catch (error) {
         console.error(`获取 ${symbol} K线数据失败:`, error.message);
         throw error;
