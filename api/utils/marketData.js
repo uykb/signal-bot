@@ -2,80 +2,54 @@ const axios = require('axios');
 const crypto = require('crypto');
 require('dotenv').config();
 
-// OKX API基础URL
-const BASE_URL = 'https://www.okx.com';
+// Bybit API基础URL
+const BASE_URL = 'https://api.bybit.com';
 
 /**
- * 生成OKX API请求所需的签名和头信息
- * @param {string} method HTTP方法
- * @param {string} requestPath 请求路径
- * @param {Object} queryParams 查询参数
- * @returns {Object} 请求头信息
+ * 生成Bybit API请求所需的签名
  */
-function generateOkxHeaders(method, requestPath, queryParams = '') {
-  const apiKey = process.env.OKX_API_KEY;
-  const secretKey = process.env.OKX_API_SECRET;
-  const passphrase = process.env.OKX_PASSPHRASE;
+function generateBybitSignature(params, timestamp, apiSecret) {
+  const queryString = Object.keys(params)
+    .sort()
+    .map(key => `${key}=${params[key]}`)
+    .join('&');
   
-  if (!apiKey || !secretKey || !passphrase) {
-    console.warn('OKX API密钥未完全设置，将使用公共API');
-    return {};
-  }
-  
-  const timestamp = new Date().toISOString();
-  let queryString = '';
-  
-  if (typeof queryParams === 'object' && Object.keys(queryParams).length > 0) {
-    queryString = '?' + new URLSearchParams(queryParams).toString();
-  } else if (typeof queryParams === 'string' && queryParams) {
-    queryString = '?' + queryParams;
-  }
-  
-  const signString = timestamp + method + requestPath + queryString;
-  const signature = crypto.createHmac('sha256', secretKey)
-    .update(signString)
-    .digest('base64');
-  
-  return {
-    'OK-ACCESS-KEY': apiKey,
-    'OK-ACCESS-SIGN': signature,
-    'OK-ACCESS-TIMESTAMP': timestamp,
-    'OK-ACCESS-PASSPHRASE': passphrase,
-    'Content-Type': 'application/json'
-  };
+  const signString = timestamp + process.env.BYBIT_API_KEY + queryString;
+  return crypto.createHmac('sha256', apiSecret).update(signString).digest('hex');
 }
 
 /**
- * 获取OKX所有合约交易对
+ * 获取Bybit所有合约交易对
  */
 async function getAllSymbols() {
   try {
-    // 获取所有永续合约交易对
-    const swapResponse = await axios.get(`${BASE_URL}/api/v5/public/instruments`, {
+    // 获取USDT永续合约
+    const usdtResponse = await axios.get(`${BASE_URL}/v5/market/instruments-info`, {
       params: {
-        instType: 'SWAP'
+        category: 'linear'
       }
     });
     
-    // 获取所有交割合约交易对
-    const futuresResponse = await axios.get(`${BASE_URL}/api/v5/public/instruments`, {
+    // 获取反向永续合约
+    const inverseResponse = await axios.get(`${BASE_URL}/v5/market/instruments-info`, {
       params: {
-        instType: 'FUTURES'
+        category: 'inverse'
       }
     });
     
     // 合并并提取交易对信息
-    const swapSymbols = swapResponse.data.data || [];
-    const futuresSymbols = futuresResponse.data.data || [];
-    const allSymbols = [...swapSymbols, ...futuresSymbols];
+    const usdtSymbols = usdtResponse.data.result.list || [];
+    const inverseSymbols = inverseResponse.data.result.list || [];
+    const allSymbols = [...usdtSymbols, ...inverseSymbols];
     
     // 过滤出活跃的交易对
     const activeSymbols = allSymbols
-      .filter(symbol => symbol.state === 'live')
+      .filter(symbol => symbol.status === 'Trading')
       .map(symbol => ({
-        symbol: symbol.instId,
-        type: symbol.instType,
-        underlying: symbol.uly
+        symbol: symbol.symbol,
+        type: symbol.category,
+        underlying: symbol.baseCoin,
+        quoteCoin: symbol.quoteCoin
       }));
     
     console.log(`获取到 ${activeSymbols.length} 个合约交易对`);
@@ -88,41 +62,33 @@ async function getAllSymbols() {
 
 /**
  * 获取指定交易对的K线数据
- * @param {string} symbol 交易对
- * @param {string} interval K线间隔
- * @param {number} limit 获取数量
  */
-async function getKlines(symbol, interval = '1H', limit = 20) {
+async function getKlines(symbol, interval = '60', limit = 20) {
   try {
-    // OKX的K线间隔格式转换
-    const okxInterval = interval.toUpperCase();
-    
-    const response = await axios.get(`${BASE_URL}/api/v5/market/candles`, {
+    const response = await axios.get(`${BASE_URL}/v5/market/kline`, {
       params: {
-        instId: symbol,
-        bar: okxInterval,
-        limit
+        category: 'linear',
+        symbol: symbol,
+        interval: interval,
+        limit: limit
       }
     });
     
-    if (!response.data.data || response.data.data.length === 0) {
+    if (!response.data.result || !response.data.result.list) {
       return [];
     }
     
-    // 将K线数据转换为更易用的格式
-    // OKX K线数据格式: [timestamp, open, high, low, close, vol, volCcy, volCcyQuote, confirm]
-    return response.data.data.map(kline => ({
+    // 将K线数据转换为统一格式
+    return response.data.result.list.map(kline => ({
       openTime: parseInt(kline[0]),
       open: parseFloat(kline[1]),
       high: parseFloat(kline[2]),
       low: parseFloat(kline[3]),
       close: parseFloat(kline[4]),
       volume: parseFloat(kline[5]),
-      quoteVolume: parseFloat(kline[7]),
-      closeTime: parseInt(kline[0]) + getIntervalMilliseconds(okxInterval),
-      trades: 0, // OKX不提供交易次数
+      closeTime: parseInt(kline[0]) + getIntervalMilliseconds(interval),
       symbol: symbol
-    })).reverse(); // OKX返回的是最新的在前，需要反转
+    })).reverse();
   } catch (error) {
     console.error(`获取 ${symbol} K线数据失败:`, error.message);
     return [];
@@ -131,20 +97,10 @@ async function getKlines(symbol, interval = '1H', limit = 20) {
 
 /**
  * 将时间间隔转换为毫秒数
- * @param {string} interval 时间间隔
- * @returns {number} 毫秒数
  */
 function getIntervalMilliseconds(interval) {
-  const unit = interval.slice(-1);
-  const value = parseInt(interval.slice(0, -1)) || 1;
-  
-  switch (unit) {
-    case 'M': return value * 60 * 1000;
-    case 'H': return value * 60 * 60 * 1000;
-    case 'D': return value * 24 * 60 * 60 * 1000;
-    case 'W': return value * 7 * 24 * 60 * 60 * 1000;
-    default: return 60 * 1000; // 默认1分钟
-  }
+  const value = parseInt(interval);
+  return value * 60 * 1000; // Bybit使用分钟作为基本单位
 }
 
 module.exports = {
