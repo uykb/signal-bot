@@ -92,7 +92,7 @@ async function getAllSymbols() {
  * @param {string} interval K线间隔
  * @param {number} limit 获取数量
  */
-async function getKlines(symbol, interval = '1H', limit = 20) {
+async function getKlines(symbol, interval = '15m', limit = 20) {
   try {
     // OKX的K线间隔格式转换
     const okxInterval = interval.toUpperCase();
