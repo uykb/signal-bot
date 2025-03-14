@@ -23,8 +23,215 @@ function formatTimes(date) {
 }
 
 /**
- * 发送批量信号到飞书
- * @param {Array} signals 信号数组
+ * 生成飞书卡片消息
+ */
+function generateCardMessage(signals) {
+  // 按信号类型分组
+  const bullishSignals = signals.filter(s => s.type === '看涨信号');
+  const bearishSignals = signals.filter(s => s.type === '看跌信号');
+  
+  // 生成看涨信号数据
+  const bullishData = bullishSignals.map(signal => ({
+    a: signal.details.symbol,
+    b: signal.details.price.toString(),
+    c: signal.details.volumeRatio,
+    d: signal.details.type
+  }));
+  
+  // 生成看跌信号数据
+  const bearishData = bearishSignals.map(signal => ({
+    a: signal.details.symbol,
+    b: signal.details.price.toString(),
+    c: signal.details.volumeRatio,
+    d: signal.details.type
+  }));
+  
+  // 获取最新信号的时间
+  const latestSignal = signals[signals.length - 1];
+  const times = formatTimes(new Date(latestSignal.time));
+  
+  // 使用飞书卡片模板
+  return {
+    config: {
+      update_multi: true
+    },
+    i18n_elements: {
+      zh_cn: [
+        {
+          tag: "markdown",
+          content: "📈看涨信号",
+          text_align: "left",
+          text_size: "normal"
+        },
+        {
+          tag: "column_set",
+          background_style: "grey",
+          horizontal_spacing: "8px",
+          horizontal_align: "left",
+          columns: [
+            {
+              tag: "column",
+              width: "weighted",
+              elements: [{
+                tag: "markdown",
+                content: "**交易对**",
+                text_align: "center",
+                text_size: "normal"
+              }],
+              vertical_align: "top",
+              vertical_spacing: "8px",
+              weight: 1
+            },
+            {
+              tag: "column",
+              width: "weighted",
+              elements: [{
+                tag: "markdown",
+                content: "**价格**",
+                text_align: "center",
+                text_size: "normal"
+              }],
+              vertical_align: "top",
+              vertical_spacing: "8px",
+              weight: 1
+            },
+            {
+              tag: "column",
+              width: "weighted",
+              elements: [{
+                tag: "markdown",
+                content: "**成交量比率**",
+                text_align: "center",
+                text_size: "normal"
+              }],
+              vertical_align: "top",
+              vertical_spacing: "8px",
+              weight: 1
+            },
+            {
+              tag: "column",
+              width: "weighted",
+              elements: [{
+                tag: "markdown",
+                content: "**合约类型**",
+                text_align: "center",
+                text_size: "normal"
+              }],
+              vertical_align: "top",
+              vertical_spacing: "8px",
+              weight: 1
+            }
+          ]
+        },
+        {
+          tag: "repeat",
+          variable: "group_table",
+          elements: bullishData
+        },
+        {
+          tag: "markdown",
+          content: "📉 看跌信号",
+          text_align: "left",
+          text_size: "normal"
+        },
+        {
+          tag: "column_set",
+          background_style: "grey",
+          horizontal_spacing: "8px",
+          horizontal_align: "left",
+          columns: [
+            {
+              tag: "column",
+              width: "weighted",
+              elements: [{
+                tag: "markdown",
+                content: "**交易对**",
+                text_align: "center",
+                text_size: "normal"
+              }],
+              vertical_align: "top",
+              vertical_spacing: "8px",
+              weight: 1
+            },
+            {
+              tag: "column",
+              width: "weighted",
+              elements: [{
+                tag: "markdown",
+                content: "**价格**",
+                text_align: "center",
+                text_size: "normal"
+              }],
+              vertical_align: "top",
+              vertical_spacing: "8px",
+              weight: 1
+            },
+            {
+              tag: "column",
+              width: "weighted",
+              elements: [{
+                tag: "markdown",
+                content: "**成交量比率**",
+                text_align: "center",
+                text_size: "normal"
+              }],
+              vertical_align: "top",
+              vertical_spacing: "8px",
+              weight: 1
+            },
+            {
+              tag: "column",
+              width: "weighted",
+              elements: [{
+                tag: "markdown",
+                content: "**合约类型**",
+                text_align: "center",
+                text_size: "normal"
+              }],
+              vertical_align: "top",
+              vertical_spacing: "8px",
+              weight: 1
+            }
+          ]
+        },
+        {
+          tag: "repeat",
+          variable: "group_table",
+          elements: bearishData
+        },
+        {
+          tag: "note",
+          elements: [
+            {
+              tag: "standard_icon",
+              token: "emoji_outlined"
+            },
+            {
+              tag: "plain_text",
+              content: `信号时间: ${times.utc}`
+            }
+          ]
+        }
+      ]
+    },
+    i18n_header: {
+      zh_cn: {
+        title: {
+          tag: "plain_text",
+          content: `📶交易信号 (共${signals.length}个)`
+        },
+        subtitle: {
+          tag: "plain_text",
+          content: `生成时间：${times.beijing} (北京时间)`
+        },
+        template: "blue"
+      }
+    }
+  };
+}
+
+/**
+ * 发送消息到飞书
  */
 async function sendToFeishu(signals) {
   const webhookUrl = process.env.FEISHU_WEBHOOK_URL;
@@ -35,77 +242,7 @@ async function sendToFeishu(signals) {
   }
   
   try {
-    // 按信号类型分组
-    const bullishSignals = signals.filter(s => s.type === '看涨信号');
-    const bearishSignals = signals.filter(s => s.type === '看跌信号');
-    
-    // 构建消息卡片
-    const message = {
-      msg_type: "interactive",
-      card: {
-        header: {
-          template: "blue",
-          title: {
-            content: `交易信号汇总 (共${signals.length}个)`,
-            tag: "plain_text"
-          }
-        },
-        elements: [
-          // 看涨信号表格
-          ...(bullishSignals.length > 0 ? [
-            {
-              tag: "div",
-              text: {
-                content: "🔼 **看涨信号**",
-                tag: "lark_md"
-              }
-            },
-            {
-              tag: "div",
-              text: {
-                content: generateTable(bullishSignals, "green"),
-                tag: "lark_md"
-              }
-            }
-          ] : []),
-          
-          // 分隔线
-          ...(bullishSignals.length > 0 && bearishSignals.length > 0 ? [{
-            tag: "hr"
-          }] : []),
-          
-          // 看跌信号表格
-          ...(bearishSignals.length > 0 ? [
-            {
-              tag: "div",
-              text: {
-                content: "🔽 **看跌信号**",
-                tag: "lark_md"
-              }
-            },
-            {
-              tag: "div",
-              text: {
-                content: generateTable(bearishSignals, "red"),
-                tag: "lark_md"
-              }
-            }
-          ] : []),
-          
-          // 底部时间戳
-          {
-            tag: "note",
-            elements: [
-              {
-                tag: "plain_text",
-                content: `生成时间：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} (北京时间)`
-              }
-            ]
-          }
-        ]
-      }
-    };
-    
+    const message = generateCardMessage(signals);
     await axios.post(webhookUrl, message);
     console.log(`已发送 ${signals.length} 个信号到飞书`);
     return true;
@@ -113,41 +250,6 @@ async function sendToFeishu(signals) {
     console.error('发送飞书消息失败:', error.message);
     return false;
   }
-}
-
-/**
- * 生成信号表格
- */
-function generateTable(signals, color) {
-  const headers = [
-    "交易对",
-    "价格",
-    "成交量比率",
-    "合约类型",
-    "标的资产",
-    "UTC时间",
-    "北京时间"
-  ];
-  
-  const rows = signals.map(signal => {
-    const times = formatTimes(new Date(signal.time));
-    return [
-      `<font color="${color}">${signal.details.symbol}</font>`,
-      signal.details.price,
-      signal.details.volumeRatio,
-      signal.details.type,
-      signal.details.underlying,
-      times.utc,
-      times.beijing
-    ];
-  });
-  
-  // 构建markdown表格
-  const headerRow = `| ${headers.join(' | ')} |`;
-  const separatorRow = `| ${headers.map(() => '---').join(' | ')} |`;
-  const dataRows = rows.map(row => `| ${row.join(' | ')} |`).join('\n');
-  
-  return `${headerRow}\n${separatorRow}\n${dataRows}`;
 }
 
 module.exports = {
