@@ -2,8 +2,8 @@ name: Cron Job
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # 每15分钟执行一次
-  workflow_dispatch:  # 允许手动触发
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
 
 jobs:
   cron:
@@ -11,6 +11,6 @@ jobs:
     steps:
       - name: Call API Endpoint
         run: |
-          curl -X GET ${{ secrets.VERCEL_URL }}/api
+          curl -X GET "${{ secrets.VERCEL_URL }}/api?format=json"
         env:
           VERCEL_URL: ${{ secrets.VERCEL_URL }}
