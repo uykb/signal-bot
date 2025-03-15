@@ -11,4 +11,9 @@ jobs:
     steps:
       - name: Call API Endpoint
         run: |
-          curl -X GET "https://signal-bot-git.vercel.app/api/api?format=json"
+          curl -X GET "https://bot.uykb.eu.org/api?format=json" \
+          -H "Accept: application/json" \
+          -H "User-Agent: GitHub-Action-Bot" \
+          --fail \
+          --retry 3 \
+          --retry-delay 5
