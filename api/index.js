@@ -7,10 +7,15 @@ require('dotenv').config();
 let recentLogs = [];
 const MAX_LOGS = 100;
 
+// 添加时区转换辅助函数
+function toLocalTime(date) {
+  return new Date(date.getTime() + 8 * 60 * 60 * 1000).toISOString();
+}
+
 // 添加日志函数
 function addLog(message, type = 'info') {
   const log = {
-    timestamp: new Date().toISOString(),
+    timestamp: toLocalTime(new Date()),
     message,
     type
   };
@@ -20,6 +25,18 @@ function addLog(message, type = 'info') {
   }
   console.log(`${log.timestamp} - ${message}`);
 }
+
+// 修改HTML页面中的时间显示
+const createHtmlPage = (logs) => `
+    // ... existing code ...
+            ${logs.map(log => `
+                <div class="log-entry ${log.type}">
+                    <span class="timestamp">${new Date(log.timestamp).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</span>
+                    <span class="message"> - ${log.message}</span>
+                </div>
+            `).join('')}
+    // ... existing code ...
+`;
 
 async function scanMarket() {
   addLog('开始扫描OKX合约市场...');
