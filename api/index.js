@@ -5,7 +5,7 @@ require('dotenv').config();
 
 // 存储最近的日志
 let recentLogs = [];
-const MAX_LOGS = 100;
+const MAX_LOGS = 10;
 
 // 添加日志函数
 function addLog(message, type = 'info') {
@@ -66,55 +66,16 @@ const createHtmlPage = (logs) => `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>OKX Signal Bot 日志</title>
+    <title>OKX Signal Bot 日志 (最近10条)</title>
     <meta charset="UTF-8">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background: #f5f5f5;
+        /* ... existing styles ... */
+        .header h1 {
+            margin-bottom: 10px;
         }
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-        .header {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .logs {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .log-entry {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-        }
-        .log-entry:last-child {
-            border-bottom: none;
-        }
-        .timestamp {
+        .header p {
             color: #666;
-            font-size: 0.9em;
-        }
-        .success { color: #28a745; }
-        .warning { color: #ffc107; }
-        .error { color: #dc3545; }
-        .refresh-btn {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .refresh-btn:hover {
-            background: #0056b3;
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -122,6 +83,7 @@ const createHtmlPage = (logs) => `
     <div class="container">
         <div class="header">
             <h1>OKX Signal Bot 日志</h1>
+            <p>显示最近10条日志记录</p>
             <button class="refresh-btn" onclick="location.reload()">刷新</button>
         </div>
         <div class="logs">
