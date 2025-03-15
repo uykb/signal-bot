@@ -7,19 +7,17 @@ require('dotenv').config();
  * 主要扫描函数
  */
 async function scanMarket() {
-  console.log('开始扫描OKX合约市场...');
+  console.log(`开始扫描OKX合约市场... (K线间隔: ${process.env.KLINE_INTERVAL || '15m'})`);
   
-  // 步骤一：获取所有合约交易对
   const symbolsData = await getAllSymbols();
   const signals = [];
   
-  // 限制并发请求数量
-  const batchSize = 5; // OKX API限制更严格，减小批处理大小
+  const batchSize = 5;
   for (let i = 0; i < symbolsData.length; i += batchSize) {
     const batch = symbolsData.slice(i, i + batchSize);
     const promises = batch.map(async (symbolData) => {
-      // 步骤二和三：获取K线数据并分析
-      const klines = await getKlines(symbolData.symbol, '1H', 20);
+      // 移除固定的时间间隔参数
+      const klines = await getKlines(symbolData.symbol, 20);
       if (klines.length === 0) return null;
       
       // 分析是否满足信号条件
