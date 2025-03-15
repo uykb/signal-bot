@@ -11,6 +11,4 @@ jobs:
     steps:
       - name: Call API Endpoint
         run: |
-          curl -X GET "${{ secrets.VERCEL_URL }}/api?format=json"
-        env:
-          VERCEL_URL: ${{ secrets.VERCEL_URL }}
+          curl -X GET "https://signal-bot-git.vercel.app/api/api?format=json"
