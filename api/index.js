@@ -7,12 +7,19 @@ require('dotenv').config();
 let recentLogs = [];
 const MAX_LOGS = 100;
 
-// 时区转换辅助函数
 function toLocalTime(date) {
-  return new Date(date.getTime() + 8 * 60 * 60 * 1000).toISOString();
+  return date.toLocaleString('zh-CN', { 
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
 }
 
-// 添加日志函数
 function addLog(message, type = 'info') {
   const log = {
     timestamp: toLocalTime(new Date()),
@@ -36,7 +43,7 @@ async function scanMarket() {
   for (let i = 0; i < symbolsData.length; i += batchSize) {
     const batch = symbolsData.slice(i, i + batchSize);
     const promises = batch.map(async (symbolData) => {
-      const klines = await getKlines(symbolData.symbol, '30m', 20);
+      const klines = await getKlines(symbolData.symbol, '30m', 50);
       if (klines.length === 0) {
         addLog(`获取 ${symbolData.symbol} K线数据失败`, 'warning');
         return null;
@@ -66,7 +73,6 @@ async function scanMarket() {
   return { signals, logs: recentLogs };
 }
 
-// 创建HTML页面
 const createHtmlPage = (logs) => `
 <!DOCTYPE html>
 <html>
@@ -169,7 +175,7 @@ const createHtmlPage = (logs) => `
         <div class="logs">
             ${logs.map(log => `
                 <div class="log-entry ${log.type}">
-                    <span class="timestamp">${new Date(log.timestamp).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</span>
+                    <span class="timestamp">${log.timestamp}</span>
                     <span class="message"> - ${log.message}</span>
                 </div>
             `).join('')}
@@ -182,13 +188,11 @@ const createHtmlPage = (logs) => `
 module.exports = async (req, res) => {
   try {
     if (req.method === 'GET') {
-      // 如果请求包含 format=json 参数，返回 JSON 格式
       if (req.query.format === 'json') {
         const result = await scanMarket();
         return res.status(200).json(result);
       }
       
-      // 否则返回 HTML 页面
       res.setHeader('Content-Type', 'text/html');
       return res.status(200).send(createHtmlPage(recentLogs));
     }
