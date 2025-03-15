@@ -42,7 +42,7 @@ async function sendToFeishu(signal) {
             elements: [
               {
                 tag: "plain_text",
-                content: `执行时间: ${toLocalTime(new Date())}`
+                content: `${toLocalTime(new Date())}`
               }
             ]
           }
