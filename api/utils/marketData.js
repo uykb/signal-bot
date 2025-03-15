@@ -92,10 +92,10 @@ async function getAllSymbols() {
  * @param {string} interval K线间隔
  * @param {number} limit 获取数量
  */
-async function getKlines(symbol, interval = '1H', limit = 20) {
+async function getKlines(symbol, interval = '30m', limit = 50) {
   try {
     // OKX的K线间隔格式转换
-    const okxInterval = interval.toUpperCase();
+    const okxInterval = interval.toLowerCase(); // 改为小写
     
     const response = await axios.get(`${BASE_URL}/api/v5/market/candles`, {
       params: {
@@ -106,11 +106,11 @@ async function getKlines(symbol, interval = '1H', limit = 20) {
     });
     
     if (!response.data.data || response.data.data.length === 0) {
+      console.log(`获取K线数据响应:`, response.data); // 添加调试日志
       return [];
     }
     
     // 将K线数据转换为更易用的格式
-    // OKX K线数据格式: [timestamp, open, high, low, close, vol, volCcy, volCcyQuote, confirm]
     return response.data.data.map(kline => ({
       openTime: parseInt(kline[0]),
       open: parseFloat(kline[1]),
@@ -120,11 +120,11 @@ async function getKlines(symbol, interval = '1H', limit = 20) {
       volume: parseFloat(kline[5]),
       quoteVolume: parseFloat(kline[7]),
       closeTime: parseInt(kline[0]) + getIntervalMilliseconds(okxInterval),
-      trades: 0, // OKX不提供交易次数
+      trades: 0,
       symbol: symbol
-    })).reverse(); // OKX返回的是最新的在前，需要反转
+    })).reverse();
   } catch (error) {
-    console.error(`获取 ${symbol} K线数据失败:`, error.message);
+    console.error(`获取 ${symbol} K线数据失败:`, error.response?.data || error.message);
     return [];
   }
 }
