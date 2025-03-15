@@ -77,7 +77,7 @@ const createHtmlPage = (logs) => `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>OKX标的信号日志</title>
+    <title>PIAO_标的信号日志</title>
     <meta charset="UTF-8">
     <style>
         body {
@@ -168,7 +168,7 @@ const createHtmlPage = (logs) => `
 <body>
     <div class="container">
         <div class="header">
-            <h1>OKX Signal Bot 日志</h1>
+            <h1>标的信号📶日志</h1>
             <button class="refresh-btn" onclick="location.reload()">刷新</button>
             <button class="manual-scan-btn" onclick="manualScan()">手动扫描</button>
         </div>
