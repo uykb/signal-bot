@@ -91,7 +91,7 @@ async function getAllSymbols() {
  * @param {string} symbol 交易对
  * @param {number} limit 获取数量
  */
-async function getKlines(symbol, limit = 20) {
+async function getKlines(symbol, limit = 50) {
   try {
     // 从环境变量获取K线间隔，默认为15分钟
     const okxInterval = process.env.KLINE_INTERVAL || '15m';
