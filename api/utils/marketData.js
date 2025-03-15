@@ -89,17 +89,18 @@ async function getAllSymbols() {
 /**
  * 获取指定交易对的K线数据
  * @param {string} symbol 交易对
+ * @param {string} interval K线间隔
  * @param {number} limit 获取数量
  */
-async function getKlines(symbol, limit = 50) {
+async function getKlines(symbol, interval = '1H', limit = 20) {
   try {
-    // 从环境变量获取K线间隔，默认为15分钟
-    const okxInterval = process.env.KLINE_INTERVAL || '15m';
+    // OKX的K线间隔格式转换
+    const okxInterval = interval.toUpperCase();
     
     const response = await axios.get(`${BASE_URL}/api/v5/market/candles`, {
       params: {
         instId: symbol,
-        bar: okxInterval.toUpperCase(),
+        bar: okxInterval,
         limit
       }
     });
