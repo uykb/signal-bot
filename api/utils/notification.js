@@ -30,7 +30,7 @@ async function sendToFeishu(signal) {
           {
             tag: "div",
             text: {
-              content: `**交易对**: ${signal.details.symbol}\n**价格**: ${signal.details.price}\n**成交量比率**: ${signal.details.volumeRatio}\n**合约类型**: ${signal.details.type}\n**标的资产**: ${signal.details.underlying}\n**信号时间**: ${signal.time}\n**执行时间**: ${toLocalTime(new Date())}`,
+              content: `**交易对**: ${signal.details.symbol}\n**价格**: ${signal.details.price}\n**成交量比率**: ${signal.details.volumeRatio}\n**合约类型**: ${signal.details.type}\n**标的资产**: ${signal.details.underlying}\n**信号时间**: ${signal.time}`,
               tag: "lark_md"
             }
           },
@@ -42,7 +42,7 @@ async function sendToFeishu(signal) {
             elements: [
               {
                 tag: "plain_text",
-                content: `由 OKX Signal Bot 生成`
+                content: `执行时间: ${toLocalTime(new Date())}`
               }
             ]
           }
