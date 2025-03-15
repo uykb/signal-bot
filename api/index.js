@@ -77,7 +77,7 @@ const createHtmlPage = (logs) => `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>OKX Signal Bot 日志</title>
+    <title>OKX标的信号日志</title>
     <meta charset="UTF-8">
     <style>
         body {
