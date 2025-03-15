@@ -17,7 +17,7 @@ async function scanMarket() {
     const batch = symbolsData.slice(i, i + batchSize);
     const promises = batch.map(async (symbolData) => {
       // 移除固定的时间间隔参数
-      const klines = await getKlines(symbolData.symbol, 20);
+      const klines = await getKlines(symbolData.symbol, 50);
       if (klines.length === 0) return null;
       
       // 分析是否满足信号条件
