@@ -1,12 +1,16 @@
-name: Trigger API
+name: Cron Job
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # 每15分钟运行一次
+    - cron: '*/15 * * * *'  # 每15分钟执行一次
+  workflow_dispatch:  # 允许手动触发
 
 jobs:
-  trigger:
+  cron:
     runs-on: ubuntu-latest
     steps:
       - name: Call API Endpoint
-        run: curl -X GET https://signal-bot-git.vercel.app/api
+        run: |
+          curl -X GET ${{ secrets.VERCEL_URL }}/api
+        env:
+          VERCEL_URL: ${{ secrets.VERCEL_URL }}
