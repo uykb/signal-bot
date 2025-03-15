@@ -7,7 +7,7 @@ require('dotenv').config();
 let recentLogs = [];
 const MAX_LOGS = 100;
 
-// 添加时区转换辅助函数
+// 时区转换辅助函数
 function toLocalTime(date) {
   return new Date(date.getTime() + 8 * 60 * 60 * 1000).toISOString();
 }
@@ -25,18 +25,6 @@ function addLog(message, type = 'info') {
   }
   console.log(`${log.timestamp} - ${message}`);
 }
-
-// 修改HTML页面中的时间显示
-const createHtmlPage = (logs) => `
-    // ... existing code ...
-            ${logs.map(log => `
-                <div class="log-entry ${log.type}">
-                    <span class="timestamp">${new Date(log.timestamp).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</span>
-                    <span class="message"> - ${log.message}</span>
-                </div>
-            `).join('')}
-    // ... existing code ...
-`;
 
 async function scanMarket() {
   addLog('开始扫描OKX合约市场...');
@@ -78,7 +66,7 @@ async function scanMarket() {
   return { signals, logs: recentLogs };
 }
 
-// 创建一个简单的HTML页面
+// 创建HTML页面
 const createHtmlPage = (logs) => `
 <!DOCTYPE html>
 <html>
@@ -133,18 +121,55 @@ const createHtmlPage = (logs) => `
         .refresh-btn:hover {
             background: #0056b3;
         }
+        .manual-scan-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .manual-scan-btn:hover {
+            background: #218838;
+        }
     </style>
+    <script>
+        async function manualScan() {
+            const button = document.querySelector('.manual-scan-btn');
+            button.disabled = true;
+            button.textContent = '扫描中...';
+            try {
+                const response = await fetch('/api?format=json', {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('扫描失败，请查看控制台获取详细信息');
+                    console.error('扫描失败:', await response.text());
+                }
+            } catch (error) {
+                alert('扫描失败，请查看控制台获取详细信息');
+                console.error('扫描失败:', error);
+            } finally {
+                button.disabled = false;
+                button.textContent = '手动扫描';
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>OKX Signal Bot 日志</h1>
             <button class="refresh-btn" onclick="location.reload()">刷新</button>
+            <button class="manual-scan-btn" onclick="manualScan()">手动扫描</button>
         </div>
         <div class="logs">
             ${logs.map(log => `
                 <div class="log-entry ${log.type}">
-                    <span class="timestamp">${new Date(log.timestamp).toLocaleString()}</span>
+                    <span class="timestamp">${new Date(log.timestamp).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</span>
                     <span class="message"> - ${log.message}</span>
                 </div>
             `).join('')}
